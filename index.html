@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>พอร์ตโฟลิโอ — AI-driven Creator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas: #FFFFFF;
+    --canvas-2: #FBF7F6;
+    --ink: #191413;
+    --ink-dim: #6E6764;
+    --line: rgba(20,15,14,0.09);
+    --red: #E31E27;
+    --red-deep: #B3141B;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: var(--canvas);
+    color: var(--ink);
+    font-family:'IBM Plex Sans Thai', sans-serif;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
+  a{ color:inherit; text-decoration:none; }
+  .display{ font-family:'Chakra Petch', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  ::selection{ background: var(--red); color:#fff; }
+  :focus-visible{ outline:2px solid var(--red); outline-offset:3px; }
+  .edit{ color: var(--red) !important; font-weight:600; }
+
+  /* ---------- ambient blooms ---------- */
+  .bloom{ position:fixed; border-radius:50%; filter: blur(140px); z-index:0; pointer-events:none; opacity:.10; }
+  .bloom.b1{ width:560px; height:560px; background:var(--red); top:-200px; left:-160px; }
+  .bloom.b2{ width:480px; height:480px; background:var(--red); bottom:-160px; right:-140px; opacity:.7;}
+
+  .wrap{ max-width: 1040px; margin:0 auto; padding: 0 24px; position:relative; z-index:1; }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    background: var(--red);
+    padding: 16px 0;
+  }
+  .topbar-inner{
+    max-width:1040px; margin:0 auto; padding:0 24px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .brand{ font-family:'Chakra Petch', sans-serif; font-weight:700; font-size:17px; color:#fff; letter-spacing:.01em; }
+  .brand .x{ color:#2A0507; }
+
+  /* ---------- page tabs ---------- */
+  .tabbar{
+    display:flex; gap:6px; overflow-x:auto;
+    padding: 14px 0; border-bottom:1px solid var(--line);
+    position: sticky; top:0; background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    z-index: 40;
+  }
+  .tab{
+    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600;
+    padding: 10px 20px; border-radius: 999px; white-space:nowrap;
+    color: var(--ink-dim); background:#fff; border:1px solid var(--line);
+    cursor:pointer; transition: all .2s ease;
+  }
+  .tab:hover{ border-color: var(--red); color: var(--red); }
+  .tab.active{ background: var(--red); border-color:var(--red); color:#fff; }
+
+  /* ---------- page container ---------- */
+  .page{ display:none; padding: 48px 0 80px; animation: fadeUp .4s ease; }
+  .page.active{ display:block; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  .page-head{ margin-bottom: 36px; }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--red);
+    letter-spacing:.14em; text-transform:uppercase; margin-bottom:10px; display:block;
+  }
+  .page-title{ font-family:'Chakra Petch', sans-serif; font-weight:700; font-size: clamp(26px,4vw,38px); }
+
+  .panel{
+    background:#fff; border:1px solid var(--line); border-radius: var(--radius);
+    box-shadow: 0 20px 60px -30px rgba(20,15,14,0.15);
+    padding: 32px clamp(20px,4vw,40px);
+  }
+
+  /* ---------- HOME ---------- */
+  .hero{ padding: 30px 0 10px; }
+  .hero-split{
+    display:grid; grid-template-columns: 1.05fr 0.95fr; gap:44px; align-items:center;
+    text-align:left;
+  }
+  .hero-portrait{
+    border-radius: 24px; overflow:hidden;
+    box-shadow: 0 30px 80px -30px rgba(20,15,14,.35);
+    border: 1px solid var(--line);
+  }
+  .hero-portrait img{ width:100%; display:block; cursor:zoom-in; }
+  .hero-split .hero-sub{ margin: 0 0 32px; max-width:480px; }
+  .hero-split .btnrow{ justify-content:flex-start; }
+  @media (max-width:780px){
+    .hero-split{ grid-template-columns: 1fr; text-align:center; gap:28px; }
+    .hero-split .hero-sub{ margin:0 auto 32px; }
+    .hero-split .btnrow{ justify-content:center; }
+    .hero-portrait{ order:-1; max-width:280px; margin:0 auto; }
+  }
+
+  h1.hero-title{
+    font-family:'Chakra Petch', sans-serif; font-weight:700;
+    font-size: clamp(32px, 5.6vw, 58px); line-height:1.12; letter-spacing:-0.01em;
+    margin-bottom:18px;
+  }
+  h1.hero-title .accent{ color: var(--red); }
+  .hero-sub{ max-width:560px; margin:0 auto 40px; color: var(--ink-dim); font-size: clamp(15px,2vw,17px); }
+  .hero-sub b{ color: var(--ink); font-weight:600; }
+
+  .stack{ position:relative; height: 220px; max-width:520px; margin: 0 auto 44px; }
+  .stack-card{
+    position:absolute; top:0; left:50%; width:150px; height:190px;
+    background:#fff; border:1px solid var(--line); border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    box-shadow: 0 24px 50px -20px rgba(20,15,14,0.22);
+    transition: transform .35s ease;
+  }
+  .stack-card .ic{ font-size:26px; }
+  .stack-card .lb{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-dim); letter-spacing:.04em; }
+  .stack-card:nth-child(1){ transform: translate(-50%,0) rotate(-14deg) translateX(-108px); z-index:1; }
+  .stack-card:nth-child(2){ transform: translate(-50%,0) rotate(-5deg) translateX(-36px); z-index:2; }
+  .stack-card:nth-child(3){ transform: translate(-50%,0) rotate(5deg) translateX(36px); z-index:3; }
+  .stack-card:nth-child(4){ transform: translate(-50%,0) rotate(14deg) translateX(108px); z-index:4; }
+  .stack:hover .stack-card:nth-child(1){ transform: translate(-50%,-10px) rotate(-18deg) translateX(-128px); }
+  .stack:hover .stack-card:nth-child(2){ transform: translate(-50%,-14px) rotate(-6deg) translateX(-44px); }
+  .stack:hover .stack-card:nth-child(3){ transform: translate(-50%,-14px) rotate(6deg) translateX(44px); }
+  .stack:hover .stack-card:nth-child(4){ transform: translate(-50%,-10px) rotate(18deg) translateX(128px); }
+  @media (max-width:560px){
+    .stack{ height:170px; }
+    .stack-card{ width:112px; height:146px; }
+    .stack-card:nth-child(1){ transform: translate(-50%,0) rotate(-12deg) translateX(-72px); }
+    .stack-card:nth-child(2){ transform: translate(-50%,0) rotate(-4deg) translateX(-24px); }
+    .stack-card:nth-child(3){ transform: translate(-50%,0) rotate(4deg) translateX(24px); }
+    .stack-card:nth-child(4){ transform: translate(-50%,0) rotate(12deg) translateX(72px); }
+  }
+
+  .btnrow{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn{
+    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600;
+    padding: 13px 26px; border-radius: 999px; border:1px solid var(--line);
+    display:inline-flex; align-items:center; gap:8px;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .btn.primary{ background: var(--red); border-color:var(--red); color:#fff; }
+  .btn.primary:hover{ transform:translateY(-2px); box-shadow:0 10px 30px -10px rgba(227,30,39,.5); }
+  .btn.ghost{ color:var(--ink); background:#fff; box-shadow: 0 6px 20px -12px rgba(20,15,14,0.15); }
+  .btn.ghost:hover{ border-color:var(--red); color:var(--red); transform:translateY(-2px); }
+
+  /* ---------- HISTORY (ประวัติส่วนตัว) ---------- */
+  .history-grid{ display:grid; grid-template-columns: 220px 1fr; gap:32px; align-items:start; }
+  @media (max-width:680px){ .history-grid{ grid-template-columns: 1fr; } }
+  .photo-frame{
+    aspect-ratio: 3/4; border:1px dashed var(--line); border-radius: var(--radius);
+    background: var(--canvas-2);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    color: var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:12px; text-align:center; padding:16px;
+  }
+  .photo-frame svg{ width:34px; height:34px; opacity:.4; }
+  .photo-frame img { width:100%; height:100%; object-fit:cover; border-radius:inherit; }
+
+  .info-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
+  .info-table tr{ border-bottom:1px solid var(--line); }
+  .info-table tr:last-child{ border-bottom:none; }
+  .info-table td{ padding: 12px 6px; font-size:14.5px; vertical-align:top; }
+  .info-table td.key{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-dim);
+    width:130px; text-transform:uppercase; letter-spacing:.04em; padding-top:14px;
+  }
+
+  .subhead{
+    font-family:'Chakra Petch', sans-serif; font-weight:700; font-size:17px;
+    margin: 36px 0 16px; display:flex; align-items:center; gap:8px;
+  }
+  .subhead::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--red); }
+
+  .timeline{ display:flex; flex-direction:column; gap:0; }
+  .tl-item{ display:grid; grid-template-columns: 96px 1fr; gap:18px; padding: 16px 0; border-bottom:1px solid var(--line); }
+  .tl-item:last-child{ border-bottom:none; }
+  .tl-year{ font-family:'JetBrains Mono', monospace; font-size:12.5px; color:var(--red-deep); font-weight:600; }
+  .tl-body .tl-title{ font-weight:600; font-size:14.5px; margin-bottom:3px; }
+  .tl-body .tl-desc{ font-size:13.5px; color:var(--ink-dim); }
+
+  /* ---------- TOOLKIT ---------- */
+  .toolkit-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
+  .toolkit-card{
+    background:#fff; border:1px solid var(--line); border-radius: var(--radius);
+    padding: 24px; box-shadow: 0 16px 40px -26px rgba(20,15,14,0.16);
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  .toolkit-card:hover{ transform: translateY(-4px); border-color: rgba(227,30,39,.35); box-shadow: 0 20px 44px -20px rgba(227,30,39,.2); }
+  .toolkit-card .ic{ font-size:22px; margin-bottom:12px; display:block; }
+  .toolkit-card .cat{ font-family:'Chakra Petch',sans-serif; font-weight:600; font-size:15px; margin-bottom:10px; }
+  .toolkit-card ul{ list-style:none; display:flex; flex-direction:column; gap:6px; }
+  .toolkit-card li{ font-size:13.5px; color:var(--ink-dim); }
+  .ai-note{ margin-top:20px; font-size:13.5px; color:var(--ink-dim); max-width:640px; }
+  .ai-note b{ color:var(--ink); }
+  .example-shots{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .example-frame{
+    width:64px; height:64px; border-radius:8px; overflow:hidden;
+    border:1px solid var(--line); background: var(--canvas-2); flex-shrink:0;
+  }
+  .example-frame img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* ---------- PROJECTS ---------- */
+  .project-card{
+    background:#fff; border:1px solid var(--line); border-radius: var(--radius);
+    padding: 30px clamp(20px,4vw,36px); margin-bottom: 20px;
+    box-shadow: 0 20px 50px -30px rgba(20,15,14,0.15);
+  }
+  .project-card.featured{ border-color: rgba(227,30,39,.35); box-shadow: 0 30px 70px -40px rgba(227,30,39,.28); }
+  .project-head{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:10px; }
+  .project-name{ font-family:'Chakra Petch', sans-serif; font-weight:700; font-size:19px; }
+  .project-status{
+    font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:999px;
+    border:1px solid var(--red-deep); color:var(--red-deep); white-space:nowrap;
+  }
+  .project-status.wip{ border-color:var(--red); color:var(--red); background:rgba(227,30,39,0.06); }
+  .project-desc{ font-size:14.5px; color:var(--ink-dim); margin-bottom:18px; max-width:620px; }
+  .shot-gallery{ display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:12px; margin-bottom:18px; }
+  .shot-frame{
+    aspect-ratio:16/10; border:1px dashed var(--line); border-radius:12px;
+    background: var(--canvas-2);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    color: var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:11px; text-align:center; padding:10px;
+  }
+  .shot-frame svg{ width:24px; height:24px; opacity:.4; }
+  .stack-tags{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .stack-tags span{
+    font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 11px; border-radius:999px;
+    background: var(--canvas-2); color: var(--ink-dim); border:1px solid var(--line);
+  }
+  .shot-frame img { width:100%; height:100%; object-fit:cover; border-radius:inherit; }
+  .ai-tag{
+    display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:11px;
+    padding:5px 12px; border-radius:999px; background: rgba(227,30,39,0.08); color: var(--red-deep);
+    border:1px solid rgba(227,30,39,.3);
+  }
+
+  /* ---------- CONTACT ---------- */
+  .contact-row{
+    display:flex; align-items:center; gap:16px; padding:16px 4px; border-bottom:1px solid var(--line);
+    font-family:'JetBrains Mono', monospace; font-size:14.5px;
+    transition: padding-left .2s ease, color .2s ease;
+  }
+  .contact-row:last-child{ border-bottom:none; }
+  .contact-row:hover{ padding-left:10px; color: var(--red); }
+  .contact-key{ color: var(--ink-dim); min-width:88px; }
+
+  footer{ text-align:center; padding: 30px 16px 50px; font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--ink-dim); }
+
+  .shot-frame img, .example-frame img, .photo-frame img{
+    cursor: zoom-in; transition: transform .2s ease;
+  }
+  .shot-frame img:hover, .example-frame img:hover, .photo-frame img:hover{ transform: scale(1.04); }
+
+  .lightbox-overlay{
+    position:fixed; inset:0; background:rgba(10,6,6,0.92);
+    display:none; align-items:center; justify-content:center;
+    z-index:500; padding:24px; cursor:zoom-out;
+  }
+  .lightbox-overlay.active{ display:flex; }
+  .lightbox-overlay img{ max-width:92vw; max-height:88vh; border-radius:10px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  .lightbox-close{
+    position:fixed; top:20px; right:24px; width:42px; height:42px; border-radius:50%;
+    background:#fff; color:var(--ink); display:flex; align-items:center; justify-content:center;
+    font-size:20px; cursor:pointer; border:none; z-index:501;
+  }
+</style>
+</head>
+<body>
+
+<div class="bloom b1"></div>
+<div class="bloom b2"></div>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">portfolio<span class="x">.</span></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabbar" role="tablist">
+    <button class="tab active" data-tab="home">หน้าแรก</button>
+    <button class="tab" data-tab="history">ประวัติส่วนตัว</button>
+    <button class="tab" data-tab="toolkit">AI Toolkit</button>
+    <button class="tab" data-tab="projects">ผลงาน</button>
+    <button class="tab" data-tab="contact">ติดต่อ</button>
+  </div>
+
+  <!-- HOME -->
+  <section class="page active" id="home">
+    <div class="hero">
+      <div class="hero-split">
+        <div class="hero-text">
+          <h1 class="hero-title">สวัสดีครับ ผมชื่อ <span class="accent">ฉัตรชัย พันธุระ</span></h1>
+          <p class="hero-sub">
+            นิสิตเว็บที่ใช้ <b>AI เป็นเครื่องมือทำงาน</b> ได้หลายด้าน — โค้ด ภาพ วิดีโอ และงานเขียน
+            ไม่ใช่แค่คนที่ตามเทรนด์ AI แต่ลงมือใช้จริงในทุกโปรเจกต์
+          </p>
+          <div class="btnrow">
+            <button class="btn primary" onclick="switchTab('projects')">ดูผลงาน →</button>
+          </div>
+        </div>
+        <div class="hero-portrait">
+          <img src="111123.png" alt="รูปแนะนำตัว" onclick="openLightbox(this)">
+        </div>
+      </div>
+      <div class="stack" aria-hidden="true">
+        <div class="stack-card"><span class="ic">💻</span><span class="lb">CODE</span></div>
+        <div class="stack-card"><span class="ic">🎨</span><span class="lb">IMAGE</span></div>
+        <div class="stack-card"><span class="ic">🎬</span><span class="lb">VIDEO</span></div>
+        <div class="stack-card"><span class="ic">✍️</span><span class="lb">TEXT</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="page" id="history">
+    <div class="page-head">
+      <span class="eyebrow">// ประวัติส่วนตัว</span>
+      <h2 class="page-title">ประวัติส่วนตัว</h2>
+    </div>
+
+    <div class="history-grid">
+      <div class="photo-frame"><img src="port.jpg" alt="รูปแนะนำตัว" onclick="openLightbox(this)">
+      </div>
+
+      <div>
+        <table class="info-table">
+          <tr><td class="key">ชื่อ-นามสกุล</td><td>ฉัตรชัย พันธุระ</td></tr>
+          <tr><td class="key">วันเกิด</td><td>24 ตุลาคม 2547</td></tr>
+          <tr><td class="key">ที่อยู่</td><td>495 หมู่5 ถนนบรรเทาทุกข์ ตำบลท่าบ่อ อำเภอท่าบ่อ จังหวัดหนองคาย 43110</td></tr>
+          <tr><td class="key">สถานศึกษา</td><td>มหาวิทยาลัยมหาสารคาม คณะวิทยาการสารสนเทศ สาขาสารสนเทศศาสตร์</td></tr>
+          <tr><td class="key">เกรดเฉลี่ย</td><td>2.66</td></tr>
+          <tr><td class="key">อีเมล</td><td>titlechatchai95@email.com</td></tr>
+          <tr><td class="key">เบอร์โทร</td><td>097-306-5354</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="subhead">การศึกษา</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">2566 - ปัจจุบัน</div>
+        <div class="tl-body">
+          <div class="tl-title">ปริญญาตรี / มหาวิทยาลัยมหาสารคาม</div>
+          <div class="tl-desc">คณะวิทยาการสารสนเทศ สาขาสารสนเทศศาสตร์</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">2560 - 2566</div>
+        <div class="tl-body">
+          <div class="tl-title">มัธยมต้น - มัธยมปลาย / โรงเรียนท่าบ่อ</div>
+          <div class="tl-desc"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subhead">ประสบการณ์ / กิจกรรม</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">2569</div>
+        <div class="tl-body">
+          <div class="tl-title">ฝึกงานย่อย / ทุกตำแหน่งที่ได้รับมอบหมาย</div>
+          <div class="tl-desc">ฝึกงานกับกองส่งเสริมการวิจัยและบริการวิชาการ มหาวิทยาลัยมหาสารคาม</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subhead">เกี่ยวกับตัวเอง</div>
+<div class="subhead">เกี่ยวกับตัวเอง</div>
+<div class="panel">
+  <p>เป็นนิสิตชั้นปีที่ 4 คณะวิทยาการสารสนเทศ สาขาสารสนเทศศาสตร์ มหาวิทยาลัยมหาสารคาม เป็นตัวของตัวเอง เข้ากับผู้อื่นได้ง่าย มีความขยันในการทำงาน ตรงต่อเวลา รับผิดชอบงานที่ได้รับมอบหมาย พร้อมเรียนรู้สิ่งใหม่ๆ อยู่เสมอ</p>
+</div>
+  </section>
+
+  <!-- TOOLKIT -->
+  <section class="page" id="toolkit">
+    <div class="page-head">
+      <span class="eyebrow">// AI Toolkit</span>
+      <h2 class="page-title">เครื่องมือ AI ที่ใช้เป็น</h2>
+    </div>
+    <div class="toolkit-grid">
+      <div class="toolkit-card">
+        <span class="ic">💻</span><div class="cat">Code</div>
+        <ul><li>Claude / ChatGPT / Gemini ช่วยเขียน-แก้โค้ด</li></ul>
+      </div>
+      <div class="toolkit-card">
+        <span class="ic">🎨</span><div class="cat">Image</div>
+        <ul><li>Leonardo AI / Google Flow / ChatGPT / Gemini</li></ul>
+        <div class="example-shots">
+          <div class="example-frame"><img src="1231.jpg" alt="ตัวอย่างงานภาพ 1" onclick="openLightbox(this)"></div>
+          <div class="example-frame"><img src="121.jpg" alt="ตัวอย่างงานภาพ 2" onclick="openLightbox(this)"></div>
+          <div class="example-frame"><img src="11.jpg" alt="ตัวอย่างงานภาพ 3" onclick="openLightbox(this)"></div>
+          <div class="example-frame"><img src="norra.png" alt="ตัวอย่างงานภาพ 4" onclick="openLightbox(this)"></div>
+        </div>
+      </div>
+      <div class="toolkit-card">
+        <span class="ic">🎬</span><div class="cat">Video</div>
+        <ul><li>Google Flow</li></ul>
+        <div class="example-shots">
+          <div class="example-frame"><img src="v1.jpg" alt="ตัวอย่างงานวิดีโอ (ภาพปก) 1" onclick="openLightbox(this)"></div>
+          <div class="example-frame"><img src="v2.jpg" alt="ตัวอย่างงานวิดีโอ (ภาพปก) 2" onclick="openLightbox(this)"></div>
+          <div class="example-frame"><img src="v3.jpg" alt="ตัวอย่างงานวิดีโอ (ภาพปก) 3" onclick="openLightbox(this)"></div>
+        </div>
+      </div>
+      <div class="toolkit-card">
+        <span class="ic">✍️</span><div class="cat">Text</div>
+        <ul><li>ChatGPT / Gemini</li></ul>
+      </div>
+    </div>
+    <p class="ai-note">
+      <b>วิธีที่ผมใช้ AI ในงานจริง:</b> ใช้ช่วยออกแบบโครงสร้างฐานข้อมูล, debug โค้ด PHP,
+      ใช้ทำงานต่างๆหรือเจนรูปภาพ
+    </p>
+  </section>
+
+  <!-- PROJECTS -->
+  <section class="page" id="projects">
+    <div class="page-head">
+      <span class="eyebrow">// ผลงาน</span>
+      <h2 class="page-title">โปรเจกต์ที่กำลังทำ</h2>
+    </div>
+
+    <div class="project-card featured">
+      <div class="project-head">
+        <span class="project-name">THABOTOWN 43110</span>
+        <span class="project-status wip">กำลังพัฒนา</span>
+      </div>
+      <p class="project-desc">
+        ร้านค้าออนไลน์สไตล์วินเทจแดง-ดำ ครบวงจร ตั้งแต่ระบบสมาชิก ตะกร้าสินค้า
+        หมวดหมู่สินค้า ไปจนถึงระบบหลังบ้านสำหรับแอดมิน ฐานข้อมูล 8 ตารางออกแบบเอง
+      </p>
+      <div class="shot-gallery">
+        <div class="shot-frame">
+           <img src="tt1.jpg" alt="หน้าแรกร้าน THABOTOWN" onclick="openLightbox(this)">
+        </div>
+        <div class="shot-frame">
+          <img src="tt2.jpg" alt="หน้าสินค้า/ตะกร้า THABOTOWN" onclick="openLightbox(this)">
+        </div>
+        <div class="shot-frame">
+          <img src="tt3.jpg" alt="หน้าแอดมิน THABOTOWN" onclick="openLightbox(this)">
+        </div>
+      </div>
+      <div class="stack-tags"><span>PHP</span><span>MySQL</span><span>XAMPP</span><span>Bebas Neue</span></div>
+      <span class="ai-tag">✦ ใช้ AI ช่วยออกแบบโครงสร้างฐานข้อมูลและ debug โค้ด</span>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="page" id="contact">
+    <div class="page-head">
+      <span class="eyebrow">// ติดต่อ</span>
+      <h2 class="page-title">ช่องทางติดต่อ</h2>
+    </div>
+    <div class="panel">
+      <a class="contact-row" href="mailto:titlechatchai95@email.com"><span class="contact-key">email</span> titlechatchai95@email.com</a>
+      <a class="contact-row" href="https://line.me/ti/p/~tle_24_10_2547" target="_blank"><span class="contact-key">line</span> @tle_24_10_2547</a>
+      <a class="contact-row" href="https://www.facebook.com/chatchai.puntura" target="_blank"><span class="contact-key">facebook</span> facebook.com/Chatchai Phanthura</a>
+      <a class="contact-row" href="tel:0973065354"><span class="contact-key">เบอร์โทร</span> 097-306-5354</a>
+    </div>
+  </section>
+</div>
+
+<footer class="mono">built with html, css & js — 2026</footer>
+
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+  function switchTab(name){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active', p.id===name));
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=> switchTab(tab.dataset.tab));
+  });
+
+  function openLightbox(imgEl){
+    document.getElementById('lightbox-img').src = imgEl.src;
+    document.getElementById('lightbox-img').alt = imgEl.alt;
+    document.getElementById('lightbox').classList.add('active');
+  }
+  function closeLightbox(){
+    document.getElementById('lightbox').classList.remove('active');
+  }
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLightbox(); });
+</script>
+</body>
+</html>
